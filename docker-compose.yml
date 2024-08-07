@@ -1,0 +1,31 @@
+services:
+  DashboardWizard:
+    container_name: DashboardWizard-container
+    image: bitnami/postgresql
+    restart: unless-stopped
+    ports:
+      - ${API_DATABASE_PORT:-5432}:5432
+    environment:
+      POSTGRES_USER: ${API_DATABASE_USER}
+      POSTGRES_PASSWORD: ${API_DATABASE_PASSWORD}
+      POSTGRES_DB: ${API_DATABASE_NAME}
+    volumes:
+      - DashboardWizard-volumes:/var/lib/postgresql/data
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    depends_on:
+      - DashboardWizard
+    ports:
+      - 8081:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin@admin
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+
+volumes:
+  DashboardWizard-volumes:
+    driver: local
+  pgadmin:
+    driver: local
