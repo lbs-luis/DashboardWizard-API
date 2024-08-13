@@ -16,56 +16,116 @@ enum Role {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  name          String
-  email         String   @unique
-  role          Role     @default(OPERATOR) // Administrator / Operator
+  id String @id @default(uuid())
+
+  name String
+  role Role   @default(OPERATOR) // Administrator / Operator
+
+  email         String @unique
   password_hash String
-  created_at    DateTime @default(now())
 
-  managedStores Store[] @relation("ManagedStores")
+  // Relação com as empresas onde o usuário é administrador
+  admin_at Company[] @relation("AdminRelation")
 
-  operatedStores Store[] @relation("OperatedStores")
+  // Relação com as empresas onde o usuário é operador
+  operator_at Company[] @relation("OperatorRelation")
+
+  created_at DateTime @default(now())
 
   @@map("users")
 }
 
-model Store {
-  id              String   @id @default(uuid())
-  store_custom_id String   @unique
-  name            String
-  description     String
-  created_at      DateTime @default(now())
-  updated_at      DateTime @default(now())
+model Company {
+  id String @id @default(uuid())
 
-  manager_id String
-  manager    User   @relation(fields: [manager_id], references: [id], name: "ManagedStores")
+  name        String
+  description String
 
-  operators User[] @relation("OperatedStores")
+  // Relacionamento com os administradores da empresa
+  admins    User[]   @relation("AdminRelation")
+  // Relacionamento com os operadores da empresa
+  operators User[]   @relation("OperatorRelation")
+  // Relacionamento com os setores da empresa
+  sectors   Sector[]
+  // Relacionamento com o estoque geral da empresa
+  Items     Item[]
+  // Relacionamento com o fluxo de pedidos
+  Orders    Order[]
 
-  Product Product[]
-  Order   Order[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  @@map("stores")
+  @@map("companies")
 }
 
-model Product {
-  id                String @id @default(uuid())
-  product_custom_id String
-  bar_code          String
+enum FluxType {
+  administrative
+  order
+}
 
-  name           String
-  description    String
-  price_in_cents Int
+model Sector {
+  id String @id @default(uuid())
 
-  quantity   Int      @default(0)
+  name        String
+  description String
+
+  fluxType FluxType // administrativo / fluxo de pedidos
+
+  // Relacionamento com a empresa
+  company    Company @relation(fields: [company_id], references: [id])
+  company_id String
+
+  // Relacionamento com SectorItems
+  sectorItems SectorItems[]
+
   created_at DateTime @default(now())
-  updated_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  store    Store  @relation(fields: [store_id], references: [id])
-  store_id String
+  @@map("sectors")
+}
 
-  @@map("products")
+model SectorItems {
+  id String @id @default(uuid())
+
+  // Relacionamento com o item
+  item    Item   @relation(fields: [item_id], references: [id])
+  item_id String
+
+  // Relacionamento com o setor
+  sector    Sector @relation(fields: [sector_id], references: [id])
+  sector_id String
+
+  quantity       Int      @default(0)
+  allocationDate DateTime @default(now())
+
+  @@unique([item_id, sector_id]) // Garante que cada item/setor seja único
+  @@map("sector_items")
+}
+
+model Item {
+  id String @id @default(uuid())
+
+  item_custom_id String @unique
+  bar_code       String @unique
+
+  name        String
+  description String
+
+  price_in_cents Int
+  cost_in_cents  Int
+
+  quantity Int @default(0)
+
+  // Relacionamento com a empresa
+  company     Company       @relation(fields: [company_id], references: [id])
+  company_id  String
+  // Setores onde este item pode estar alocado
+  sectorItems SectorItems[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("items")
 }
 
 enum orderStatus {
@@ -85,8 +145,8 @@ model Order {
   status          orderStatus @default(Available)
   type            orderType
 
-  store    Store  @relation(fields: [store_id], references: [id])
-  store_id String
+  company    Company @relation(fields: [company_id], references: [id])
+  company_id String
 
   @@map("orders")
 }
